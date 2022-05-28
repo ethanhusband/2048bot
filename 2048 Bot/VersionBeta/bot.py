@@ -7,8 +7,21 @@ class Bot:
     def __init__(self, grid):
         self.grid = grid
 
-    def get_move():
-        return
+    def get_move(self):
+        node = Node(self.grid)
+        up_utility = expectimax(node.options[0], False, 0)
+        left_utility = expectimax(node.options[1], False, 0)
+        down_utility = expectimax(node.options[2], False, 0)
+        right_utility = expectimax(node.options[3], False, 0)
+        max_utility = max(up_utility, left_utility, down_utility, right_utility)
+        if (max_utility == up_utility):
+            return "Up"
+        elif (max_utility == left_utility):
+            return "Left"
+        elif (max_utility == down_utility):
+            return "Down"
+        else:
+            return "Right"
     
 class Node:
     def __init__(self, grid):
@@ -22,7 +35,7 @@ class Node:
 def expectimax(node, is_max, depth):
  
     # Condition for Terminal node
-    if (depth == 8 or (node.left == None and node.right == None)):
+    if (depth == 2 or (node.left == None and node.right == None)):
         return node.value
      
     # Maximizer node. Chooses the max from the 4 move subtrees
