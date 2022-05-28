@@ -13,7 +13,9 @@ class Bot:
 class Node:
     def __init__(self, grid):
         self.grid = grid
-        self.score = grid.current_score
+        self.value = grid.current_score
+        self.options = [Node(grid.copy().grid_up()), Node(grid.copy().grid_left()), \
+                        Node(grid.copy().grid_down()), Node(grid.copy().grid_right())]
         
 
 # Getting expectimax
@@ -23,13 +25,23 @@ def expectimax(node, is_max, depth):
     if (depth == 8 or (node.left == None and node.right == None)):
         return node.value
      
-    # Maximizer node. Chooses the max from the
-    # left and right sub-trees
+    # Maximizer node. Chooses the max from the 4 move subtrees
     if (is_max):
-        return max(expectimax(node.left, False), expectimax(node.right, False))
+        return max(expectimax(node.options[0], False, depth+1), expectimax(node.options[1], False, depth+1),
+                    expectimax(node.options[2], False, depth+1), expectimax(node.options[3], False, depth+1))
   
-    # Chance node. Returns the average of
-    # the left and right sub-trees
+    # Chance node. Returns the average of possible panel spawns
     else:
-        return (expectimax(node.left, True)+ expectimax(node.right, True))/2
+        spots = node.grid.retrieve_empty_cells()
+        expected_value = 0
+        for spot in spots:
+            # Create the node representing the possibility a 4 might show up in this empty cell
+            four_possibility = Node(node.grid.copy())
+            four_possibility.grid.cells[spot[0]][spot[1]] = 4
+            # Create the node representing the possibility a 2 might show up in this empty cell
+            two_possibility = Node(node.grid.copy())
+            two_possibility.grid.cells[spot[0]][spot[1]] = 2
+            expectation_sum += (0.9*expectimax(two_possibility, True, depth+1) + 
+                                0.1*expectimax(four_possibility, True, depth+1))
+        return expectation_sum/len(spots)
      
