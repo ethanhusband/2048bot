@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <algorithm>
 
 typedef uint64_t board_t;
 typedef uint16_t row_t;
@@ -11,3 +12,4 @@ typedef uint16_t row_t;
 
 // Note in the following, 'table' is different to 'board'. Table stores data on possible row states
 #define TABLE_SIZE 65536 // 2^16, 2 possible bit states, 16 bits, per row
+#define MAXIMUM_TILE 32768
