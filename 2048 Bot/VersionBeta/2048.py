@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 from bot import Bot
+from grid import Grid
 try:
     import tkinter as tk # For Python 3
     import tkinter.messagebox as messagebox
@@ -10,146 +11,8 @@ except:
     import Tkinter as tk # For Python 2
     import tkMessageBox as messagebox
 import sys
-import random
+import time
 
-
-class Grid:
-    '''The data structure representation of the 2048 game.
-    '''
-    def __init__(self, n):
-        self.size = n
-        self.cells = self.generate_empty_grid()
-        self.compressed = False
-        self.merged = False
-        self.moved = False
-        self.current_score = 0
-
-    def random_cell(self):
-        cell = random.choice(self.retrieve_empty_cells())
-        i = cell[0]
-        j = cell[1]
-        self.cells[i][j] = 2 if random.random() < 0.9 else 4
-
-    def retrieve_empty_cells(self):
-        empty_cells = []
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.cells[i][j] == 0:
-                    empty_cells.append((i, j))
-        return empty_cells
-
-    def generate_empty_grid(self):
-        return [[0] * self.size for i in range(self.size)]
-
-    def transpose(self):
-        self.cells = [list(t) for t in zip(*self.cells)]
-
-    def reverse(self):
-        for i in range(self.size):
-            start = 0
-            end = self.size - 1
-            while start < end:
-                self.cells[i][start], self.cells[i][end] = \
-                    self.cells[i][end], self.cells[i][start]
-                start += 1
-                end -= 1
-
-    def clear_flags(self):
-        self.compressed = False
-        self.merged = False
-        self.moved = False
-
-    def left_compress(self):
-        self.compressed = False
-        new_grid = self.generate_empty_grid()
-        for i in range(self.size):
-            count = 0
-            for j in range(self.size):
-                if self.cells[i][j] != 0:
-                    new_grid[i][count] = self.cells[i][j]
-                    if count != j:
-                        self.compressed = True
-                    count += 1
-        self.cells = new_grid
-
-    def left_merge(self):
-        self.merged = False
-        for i in range(self.size):
-            for j in range(self.size - 1):
-                if self.cells[i][j] == self.cells[i][j + 1] and \
-                   self.cells[i][j] != 0:
-                    self.cells[i][j] *= 2
-                    self.cells[i][j + 1] = 0
-                    self.current_score += self.cells[i][j]
-                    self.merged = True
-
-    def found_2048(self):
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.cells[i][j] >= 2048:
-                    return True
-        return False
-
-    def has_empty_cells(self):
-        for i in range(self.size):
-            for j in range(self.size):
-                if self.cells[i][j] == 0:
-                    return True
-        return False
-
-    def can_merge(self):
-        for i in range(self.size):
-            for j in range(self.size - 1):
-                if self.cells[i][j] == self.cells[i][j + 1]:
-                    return True
-        for j in range(self.size):
-            for i in range(self.size - 1):
-                if self.cells[i][j] == self.cells[i + 1][j]:
-                    return True
-        return False
-
-    def set_cells(self, cells):
-        self.cells = cells
-
-    def print_grid(self):
-        print('-' * 40)
-        for i in range(self.size):
-            for j in range(self.size):
-                print('%d\t' % self.cells[i][j], end='')
-            print()
-        print('-' * 40)
-
-    def grid_up(self):
-        self.transpose()
-        self.left_compress()
-        self.left_merge()
-        self.moved = self.compressed or self.merged
-        self.left_compress()
-        self.transpose()
-
-    def grid_left(self):
-        self.left_compress()
-        self.left_merge()
-        self.moved = self.compressed or self.merged
-        self.left_compress()
-
-    def grid_down(self):
-        self.transpose()
-        self.reverse()
-        self.left_compress()
-        self.left_merge()
-        self.moved = self.compressed or self.merged
-        self.left_compress()
-        self.reverse()
-        self.transpose()
-
-    def grid_right(self):
-        self.reverse()
-        self.left_compress()
-        self.left_merge()
-        self.moved = self.compressed or self.merged
-        self.left_compress()
-        self.reverse()
 
 
 class GamePanel:
@@ -234,73 +97,73 @@ class GamePanel:
 
 class Game:
     '''The main game class which is the controller of the whole game.'''
-    def __init__(self, grid, panel):
+    def __init__(self, grid, panel, uses_ai):
         self.grid = grid
         self.panel = panel
         self.start_cells_num = 2
         self.over = False
         self.won = False
         self.keep_playing = False
+        self.uses_ai = uses_ai
 
     def is_game_terminated(self):
         return self.over or (self.won and (not self.keep_playing))
 
-    def start(self, player):
+    def start(self):
         self.add_start_cells()
-        self.panel.paint()
-        if player == "HUMAN":
+        if (self.uses_ai):
+            self.ai_handler()
+        else:
+            self.panel.paint()
             self.panel.root.bind('<Key>', self.key_handler)
-        elif player == "AI":
-            ai = Bot(self.grid)
-            self.panel.root.bind('<Key>', self.automated_move_handler(ai))
-        self.panel.root.mainloop()
+            self.panel.root.mainloop()
+        
 
     def add_start_cells(self):
         for i in range(self.start_cells_num):
             self.grid.random_cell()
-
-    def can_move(self):
-        return self.grid.has_empty_cells() or self.grid.can_merge()
-
-    def automated_move_handler(self, ai):
-        if self.is_game_terminated():
-            return
-
-        self.grid.clear_flags()
-        key_value = ai.get_move()
-        assert(key_value in GamePanel.ALL_KEYS)
-        print('{} key pressed'.format(key_value))
-        if key_value in GamePanel.UP_KEYS:
-            self.grid.grid_up()
-        elif key_value in GamePanel.LEFT_KEYS:
-            self.grid.grid_left()
-        elif key_value in GamePanel.DOWN_KEYS:
-            self.grid.grid_down()
-        elif key_value in GamePanel.RIGHT_KEYS:
-            self.grid.grid_right()
-        else:
-            pass
-
-        self.panel.paint()
-        print('Score: {}'.format(self.grid.current_score))
-        if self.grid.found_2048():
-            self.you_win()
-            if not self.keep_playing:
+        
+    def ai_handler(self):
+        while True:
+            if self.is_game_terminated():
                 return
+    
+            self.grid.clear_flags()
+            ai = Bot(self.grid.copy())
+            move = ai.get_move()
+            print("PERFORMING MOVE ", move, " ON GRID:")
+            self.grid.print_grid()
+            if (move in panel.DOWN_KEYS):
+                self.grid.grid_down()
+            elif (move in panel.RIGHT_KEYS):
+                self.grid.grid_right()
+            elif (move in panel.UP_KEYS):
+                self.grid.grid_up()
+            else:
+                self.grid.grid_left()
+                
+            print('Score: {}'.format(self.grid.current_score))
+            if self.grid.found_2048():
+                self.you_win()
+                if not self.keep_playing:
+                    return
 
-        if self.grid.moved:
-            self.grid.random_cell()
+            if self.grid.moved:
+                self.grid.random_cell()
 
-        self.panel.paint()
-        if not self.can_move():
-            self.over = True
-            self.game_over()
+            self.panel.paint()
+            if not self.grid.can_move():
+                self.over = True
+                self.game_over()
+
+            self.panel.root.update()  
 
     def key_handler(self, event):
         if self.is_game_terminated():
             return
-
+        
         self.grid.clear_flags()
+
         key_value = event.keysym
         print('{} key pressed'.format(key_value))
         if key_value in GamePanel.UP_KEYS:
@@ -325,7 +188,7 @@ class Game:
             self.grid.random_cell()
 
         self.panel.paint()
-        if not self.can_move():
+        if not self.grid.can_move():
             self.over = True
             self.game_over()
 
@@ -347,5 +210,5 @@ if __name__ == '__main__':
     size = 4
     grid = Grid(size)
     panel = GamePanel(grid)
-    game2048 = Game(grid, panel)
-    game2048.start("HUMAN")
+    game2048 = Game(grid, panel, True)
+    game2048.start()
