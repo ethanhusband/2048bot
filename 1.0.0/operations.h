@@ -13,3 +13,6 @@ typedef uint16_t row_t;
 // Note in the following, 'table' is different to 'board'. Table stores data on possible row states
 #define TABLE_SIZE 65536 // 2^16, 2 possible bit states, 16 bits, per row
 #define MAXIMUM_TILE 32768
+
+// This can be &'d with any 16bit row to output the number that represents the rightmost square (last 4 digits)
+#define SQUARE_MASK 0xf

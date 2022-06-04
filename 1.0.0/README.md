@@ -1,8 +1,9 @@
 
+# 2048 Bot
 
 ## DATA STRUCTURES
 
-#### BOARD REPRESENTATION
+### BOARD REPRESENTATION
 
 Since each entry in the board is necessarily a power of 2,
 the entire board can be represented in a 64 bit number,
@@ -12,7 +13,7 @@ However, the theoretical maximum possible tile in a 4x4 grid
 is only 2^(4x4) = 65536 (unless you get a 4 at the end, a neglected case).
 Since this has only ever been achieved by 3 AI's, the consideration will be deferred
 
-#### OPERATION TABLES
+### OPERATION TABLES
 
 Operation tables allow for the result of a move to be calculated in O(1) time within the decision tree.
 
@@ -39,7 +40,7 @@ of the bot itself and has a small upper bound, so is largely unnecessary.
 
 ## Other
 
-#### Heuristic improvements that may or may not work
+### Heuristic improvements that may or may not work
 
 - For skipping moves where board is the same, there are two options:
   - Compare for equality against table (currently in use)
