@@ -23,13 +23,19 @@ void instantiate_tables() {
             std::stable_sort(square, square+ROW_SIZE, row_shift_comp);
         }
         
-        // Concatenate the squares for the resulting row
+        // Concatenate the sorted squares for the resulting row
         row_t result = (square[0]) | 
                         (square[1] <<  SQUARE_BITS) | 
                         (square[2] <<  2*SQUARE_BITS) | 
                         (square[3] << 3*SQUARE_BITS);
+        row_t reverse_result =  (square[3]) | 
+                                (square[2] <<  SQUARE_BITS) | 
+                                (square[1] <<  2*SQUARE_BITS) | 
+                                (square[0] << 3*SQUARE_BITS);
 
+        // Add this row iteration to the tables
         row_left_table[row] = result;
+        row_right_table[row] = reverse_result;
     }
 }
 

@@ -1,6 +1,6 @@
 
 
-##### DATA STRUCTURES
+## DATA STRUCTURES
 
 #### BOARD REPRESENTATION
 
@@ -31,15 +31,15 @@ std::stable_sort() achieves this.
 Ultimately an efficient time complexity for calculating these tables does not affect performance
 of the bot itself and has a small upper bound, so is largely unnecessary.
 
-##### CODEBASE STANDARDS
+## CODEBASE STANDARDS
 
 - Each operation/transformation in the algorithm is explained, for the sake of sanity
 - The use of static inline functions increases runtime speed, as per the (C++ 17) docs:
     - "The original intent of the inline keyword was to serve as an indicator to the optimizer that inline substitution of a    function is preferred over function call, that is, instead of executing the function call CPU instruction to transfer control to the function body, a copy of the function body is executed without generating the call. This avoids overhead created by the function call (passing the arguments and retrieving the result) but it may result in a larger executable as the code for the function has to be repeated multiple times."
 
-#### Other
+## Other
 
-## Heuristic improvements that may or may not work
+#### Heuristic improvements that may or may not work
 
 - For skipping moves where board is the same, there are two options:
   - Compare for equality against table (currently in use)
