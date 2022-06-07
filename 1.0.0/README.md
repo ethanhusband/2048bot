@@ -1,6 +1,10 @@
 
 # 2048 Bot
 
+## ALGORITHM
+
+### EXPECTIMAX 
+
 ## DATA STRUCTURES
 
 ### BOARD REPRESENTATION
@@ -29,8 +33,12 @@ The left shift of any given row can be implemented efficiently by using any stab
 where the key is simply whether the square is zero or nonzero, nonzero obviously taking priority. 
 std::stable_sort() achieves this.
 
+- Add column operation table description
+
 Ultimately an efficient time complexity for calculating these tables does not affect performance
 of the bot itself and has a small upper bound, so is largely unnecessary.
+
+### SCORING TABLES
 
 ## CODEBASE STANDARDS
 
