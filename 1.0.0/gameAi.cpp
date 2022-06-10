@@ -1,4 +1,4 @@
-#include "operations.h"
+#include "gameAi.h"
 
 static row_t row_left_table [65536];
 static row_t row_right_table[65536];
@@ -7,18 +7,27 @@ static board_t col_up_table[65536];
 static board_t col_down_table[65536];
 static float score_table[65536];
 
-#define TESTING true
+#define USING_FRONTEND false
 
-int main() {
-#if TESTING
+int main(int argc, char *argv[]) {
     instantiate_tables();
-    board_t board = 0x1102211000011031;
-    printf("ORIGINAL BOARD:\n" );
-    print_bitboard(board);
-    printf("SHIFTED UP:\n");
-    print_bitboard(play_move_up(board));
+#if USING_FRONTEND
+    /*printf("STARTING WITH BOARD: \n");
+    print_bitboard(299068625676867);
+    int move = select_move(299068625676867);
+    printf("RESULT IS MOVE %d\n", move);
+    print_bitboard(play_move(move, 299068625676867));*/
+    play_game();
 #endif
-#if !TESTING
+#if !USING_FRONTEND
+    
+    board_t board;
+    std::cin >> board;
+    printf("RECEIVED BITBOARD: \n");
+    print_bitboard(board);
+    int result = select_move(board);
+    printf("RESULT: %d", result);
+    return result;
 #endif
 }
 
@@ -52,6 +61,7 @@ void instantiate_tables() {
                 j++;
             }
             if (square[j] == square[i]) {
+                if (square[j] == 0xf) continue; // handle the 32768 limit
                 square[i]++;
                 square[j] = 0;
             }
@@ -94,50 +104,67 @@ bool right_shift_comp(const row_t a, const row_t b) {
     return ((a != 0) && (b == 0));
 }
 
+static float score_board(board_t board) {
+    return score_table[(board >>  0) & ROW_MASK] +
+           score_table[(board >> 16) & ROW_MASK] +
+           score_table[(board >> 32) & ROW_MASK] +
+           score_table[(board >> 48) & ROW_MASK];
+}
+
 void play_game() {
-    board_t board = 0;
-    board_t starting_square_one = get_new_square();
-    board_t starting_square_two = get_new_square();
-    board = insert_rand_square(insert_rand_square(board, starting_square_one), starting_square_two);
+    board_t board = init_board();
     // We now have our starting board
 
     while(true) {
-        int move;
+        printf("BOARD IS NOW: %llu\n", board);
+        print_bitboard(board);
         board_t newboard;
-
         // The score increases when 2 tiles merge, by an amount equal to the value of the merged tile. 
         // Given this, there is a way to calculate the score explicitly using just the tiles.
         // However, getting a 4 to begin with means it wasnt a merged tile, and needs to be recorded to subtract from score.
         int score_penalty = 0;
+        int best_move = select_move(board);        
 
-        float max_util = -1;
-        int best_move = -1;
-        for (int i = 0; i < MOVE_DIRECTIONS ; i++) {
-            float move_score = get_move_tree_score(play_move(i, board), 0, false, 1);
-            if (move_score > max_util) {
-                best_move = i;
-                max_util = move_score;
-            }
-        }
         if(best_move < 0)
             // get_move_tree_score returns negative if no available moves
             break;
 
-        newboard = play_move(move, board);
+        newboard = play_move(best_move, board);
 
         board_t new_square = get_new_square();
         if (new_square == 2) score_penalty += 4;
         board = insert_rand_square(newboard, new_square);
     }
-    print_bitboard(board);
-    printf("Game over");
+    printf("Game over\n");
+}
+
+board_t init_board() {
+    board_t board = 0;
+    board_t starting_square_one = get_new_square();
+    board_t starting_square_two = get_new_square();
+    board = insert_rand_square(insert_rand_square(board, starting_square_one), starting_square_two);
+    return board;
+}
+
+int select_move(board_t board) {
+    float max_util = -1;
+    int best_move = -1;
+    for (int i = 0; i < MOVE_DIRECTIONS; i++) {
+        if (play_move(i, board) == board) continue;
+        float move_score = get_move_tree_score(play_move(i, board), 0, false, 1);
+        if (move_score > max_util) {
+            best_move = i;
+            max_util = move_score;
+        }
+    }
+    return best_move;
 }
 
 
 // Dont calculate moves where the cumulative probability of the random squares occurring is below this threshold
 #define CPROB 0.0001f
 // This is where expectimax algorithm is implemented to create a move tree
-float get_move_tree_score(board_t board, int depth, bool is_max, float cprob) {
+float get_move_tree_score(board_t board, int depth, int is_max, float cprob) {
     if (depth == MAX_DEPTH || cprob < CPROB) return score_board(board);
 
     // Max node, pick the highest score move
@@ -147,7 +174,7 @@ float get_move_tree_score(board_t board, int depth, bool is_max, float cprob) {
         for (int i = 0; i < ROW_SIZE; i++) {
             board_t tmp = play_move(i, board);
             // Ensure board is not the same, set highest utility to the board with max score
-            if (tmp != board && get_move_tree_score(tmp, depth+1, false, cprob) > highest_utility) {
+            if (tmp != board && get_move_tree_score(tmp, depth+1, TRUE, cprob) > highest_utility) {
                 highest_utility = score_board(board);
                 best_move = tmp;
             }
@@ -164,19 +191,12 @@ float get_move_tree_score(board_t board, int depth, bool is_max, float cprob) {
                 empty_squares++;
                 int two_board = board | (1 << i);
                 int four_board = (board) | (2 << i);
-                expectation_sum += 0.9*get_move_tree_score(two_board, depth, true, 0.9*cprob) + \
-                                    0.1*get_move_tree_score(two_board, depth, true, 0.1*cprob);
+                expectation_sum += 0.9*get_move_tree_score(two_board, depth+1, FALSE, 0.9*cprob) + \
+                                    0.1*get_move_tree_score(four_board, depth+1, FALSE, 0.1*cprob);
             }
         }
         return expectation_sum/empty_squares;
     }
-}
-
-static float score_board(board_t board) {
-    return score_table[(board >>  0) & ROW_MASK] +
-           score_table[(board >> 16) & ROW_MASK] +
-           score_table[(board >> 32) & ROW_MASK] +
-           score_table[(board >> 48) & ROW_MASK];
 }
 
 
@@ -194,8 +214,12 @@ static inline board_t transpose_board(board_t board) {
 }
 
 board_t insert_rand_square(board_t board, board_t new_square) {
-    int index = rand()*count_empty_squares(board);
-    int empties_found;
+    int empties = count_empty_squares(board);
+    int index = 1;
+    if (empties > 1) {
+        index = rand()%empties;
+    }
+    int empties_found=0;
     for (int i = 0; i < BOARD_BITS; i += SQUARE_BITS) {
         if (!((board >> i) & SQUARE_MASK)) empties_found++;
         if (empties_found == index) {
@@ -208,14 +232,14 @@ board_t insert_rand_square(board_t board, board_t new_square) {
 board_t get_new_square() {
     srand(time(NULL));
     board_t new_square;
-    rand() < 0.9 ? new_square = 1 : new_square = 2;
+    rand()%10 < 9 ? new_square = 1 : new_square = 2;
     return new_square;
 }
 
 int count_empty_squares(board_t board) {
     int empty_squares = 0;
     for (int i = 0; i < BOARD_BITS; i += SQUARE_BITS) {
-        if ((board >> i) & SQUARE_MASK > 0) empty_squares++;
+        if (!((board >> i) & SQUARE_MASK)) empty_squares++;
     }
     return empty_squares;
 }
@@ -231,7 +255,9 @@ static inline board_t play_move(int move, board_t board) {
         return play_move_left(board);
     case 3:
         return play_move_right(board);
-    }
+    default:
+        return 0;
+    }  
 }
 
 static inline board_t play_move_up(board_t board) {

@@ -40,6 +40,14 @@ of the bot itself and has a small upper bound, so is largely unnecessary.
 
 ### SCORING TABLES
 
+## FRONT END
+
+### FUNCTIONS CALLED FROM C++
+
+### MULTITHREADING
+
+### PYTHON AI TAKEOVER AT 32768 TILE
+
 ## CODEBASE STANDARDS
 
 - Each operation/transformation in the algorithm is explained, for the sake of sanity
