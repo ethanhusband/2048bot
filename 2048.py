@@ -180,6 +180,8 @@ class Game:
                 self.game_over()
 
             self.panel.root.update()  
+        # Show the final losing board correctly
+        self.panel.root.update()  
 
     def key_handler(self, event):
         if self.is_game_terminated():
@@ -202,10 +204,6 @@ class Game:
 
         self.panel.paint()
         print('Score: {}'.format(self.grid.current_score))
-        if self.grid.found_2048():
-            self.you_win()
-            if not self.keep_playing:
-                return
 
         if self.grid.moved:
             self.grid.random_cell()
@@ -233,5 +231,5 @@ if __name__ == '__main__':
     size = 4
     grid = Grid(size)
     panel = GamePanel(grid)
-    game2048 = Game(grid, panel, False)
+    game2048 = Game(grid, panel, True)
     game2048.start()

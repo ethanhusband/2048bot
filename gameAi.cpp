@@ -14,7 +14,7 @@ static board_t col_down_table[65536];
 static float score_table[65536];
 static float heur_score_table[65536];
 
-#define USING_FRONTEND true
+#define USING_FRONTEND false
 
 int main(int argc, char *argv[]) {
     instantiate_tables();
@@ -201,12 +201,13 @@ board_t init_board() {
     return board;
 }
 
+
+
 int select_move(board_t board) {
     float max_util = 0;
     int best_move = -1;
 
     for (int i = 0; i < MOVE_DIRECTIONS; i++) {
-        if (play_move(i, board) == board) continue;
 
         float move_score = score_root_move(board, i);
         if (move_score > max_util) {
@@ -218,13 +219,14 @@ int select_move(board_t board) {
 }
 
 float score_root_move(board_t board, int move) {
-    // state, play_move(board, i), 1.0f
+    if (play_move(move, board) == board) return 0;
     eval_state state;
     state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
+
     board_t move_board = play_move(move, board);
     float move_score = score_chance_node(state, move_board, 1.0f);
-    printf("Move %d: result %f: eval'd %ld moves (%d cache hits) (maxdepth=%d)\n", move, move_score, \
-                state.moves_evaled, state.cachehits, state.maxdepth);
+    printf("Move %d: result %f: eval'd %ld moves (%d cache hits, %d cache size)) (maxdepth=%d)\n", move, move_score, \
+                state.moves_evaled, state.cachehits, (int)state.cache_table.size(), state.maxdepth);
     return move_score;
 }
 
@@ -251,8 +253,8 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
 
     // Take the expected score from the cache if possible
     if (state.curdepth < CACHE_DEPTH_LIM) {
-        const cache_table_t::iterator &i = cache_table.find(board);
-        if (i != cache_table.end()) {
+        const cache_table_t::iterator &i = state.cache_table.find(board);
+        if (i != state.cache_table.end()) {
             cache_entry_t entry = i->second;
             if(entry.depth <= state.curdepth) {
                 state.cachehits++;
@@ -281,7 +283,7 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
     // Add this result to the cache
     if (state.curdepth < CACHE_DEPTH_LIM) {
         cache_entry_t entry = {static_cast<uint8_t>(state.curdepth), expectation};
-        cache_table[board] = entry;
+        state.cache_table[board] = entry;
     }
 
     return expectation;

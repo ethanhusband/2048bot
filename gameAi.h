@@ -6,22 +6,23 @@
 #include <sys/time.h> // TEMPORARY
 #include <unistd.h> // grants sleep function used for testing
 #include <iostream> // reading in the board from .py
+#include <unordered_map>
 
+// Board state representations
 typedef uint64_t board_t;
 typedef uint16_t row_t;
 
-// Definitions for the caching table used during the expectimax search. Whether this optimises algorithm is tentative.
+// Definitions for the caching table used during the expectimax search.
 struct cache_entry_t{
     uint8_t depth;
     float heuristic;
 };
-#include <unordered_map>
+
 typedef std::unordered_map<board_t, cache_entry_t> cache_table_t;
-cache_table_t cache_table;
 
 // The state of the current expectimax board evaluation
 struct eval_state {
-    cache_table_t cache_table; // transposition table, to cache previously-seen moves
+    cache_table_t cache_table; // cache map for previously-seen moves
     int maxdepth;
     int curdepth;
     int cachehits;
