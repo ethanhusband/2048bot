@@ -222,9 +222,9 @@ float score_root_move(board_t board, int move) {
     eval_state state;
     state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
     board_t move_board = play_move(move, board);
-    float move_score = score_chance_node(state, move_board, 1.0f) + 1e-6;
-    printf("Move %d: result %f: eval'd %ld moves (%d cache hits, %d cache size) (maxdepth=%d)\n", move, move_score, \
-                state.moves_evaled, state.cachehits, (int)state.cache_table.size(), state.maxdepth);
+    float move_score = score_chance_node(state, move_board, 1.0f);
+    printf("Move %d: result %f: eval'd %ld moves (%d cache hits) (maxdepth=%d)\n", move, move_score, \
+                state.moves_evaled, state.cachehits, state.maxdepth);
     return move_score;
 }
 

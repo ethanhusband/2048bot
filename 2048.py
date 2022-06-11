@@ -233,5 +233,5 @@ if __name__ == '__main__':
     size = 4
     grid = Grid(size)
     panel = GamePanel(grid)
-    game2048 = Game(grid, panel, True)
+    game2048 = Game(grid, panel, False)
     game2048.start()
