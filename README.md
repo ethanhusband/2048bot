@@ -1,7 +1,7 @@
 
 # 2048 Bot
 
-To operate, simply open any terminal where python, navigate to the 1.0.0 directory and enter
+To operate, simply open any terminal where python, enter
 
     python3 2048.py
 
