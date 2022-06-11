@@ -22,7 +22,6 @@ int main(int argc, char *argv[]) {
     play_game();
 #endif
 #if USING_FRONTEND
-    
     board_t board;
     std::cin >> board;
     printf("RECEIVED BITBOARD: \n");
@@ -210,6 +209,7 @@ board_t init_board() {
 
 
 int select_move(board_t board) {
+    // Return the best move for a given board
     float max_util = 0;
     int best_move = -1;
 
@@ -237,6 +237,7 @@ float score_root_move(board_t board, int move) {
 }
 
 static float score_max_node(eval_state &state, board_t board, float cprob) {
+    // Get the node score for a maximising node by propagating the maximal child node
     float highest_utility = 0.0f;
     state.curdepth++;
     for (int move = 0; move < MOVE_DIRECTIONS; ++move) {
@@ -252,6 +253,7 @@ static float score_max_node(eval_state &state, board_t board, float cprob) {
 }
 
 static float score_chance_node(eval_state &state, board_t board, float cprob) {
+    // Get the node score of a chance node by propagating the expected value of child nodes
     if (state.curdepth >= state.depth_limit || cprob < CPROB_THRESHOLD) {
             state.maxdepth = std::max(state.curdepth, state.maxdepth);
             return score_board(board);
@@ -271,7 +273,7 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
 
     int empties = count_empty_squares(board);
     cprob /= empties;
-
+    // Test a two or four appearing in each empty square, aggregate scores in expected value
     float expectation = 0.0f;
     board_t tmp = board;
     board_t two_board = 1;
@@ -297,7 +299,7 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
 }
 
 static inline board_t transpose_board(board_t x) {
-    // The most convoluted algorithm in the program, see assets/transpose.png for pen & paper explanation
+    // The most convoluted algorithm in the program, see assets/transpose.png for a visual explanation
     board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
     board_t a2 = x & 0x0000F0F00000F0F0ULL;
     board_t a3 = x & 0x0F0F00000F0F0000ULL;
