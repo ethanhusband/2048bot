@@ -14,7 +14,7 @@ static board_t col_down_table[65536];
 static float score_table[65536];
 static float heur_score_table[65536];
 
-#define USING_FRONTEND false
+#define USING_FRONTEND true
 
 int main(int argc, char *argv[]) {
     instantiate_tables();
