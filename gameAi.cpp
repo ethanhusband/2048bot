@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 #endif
 }
 
-// Heuristic scoring settings - values taken from existing 2048 ai
+// Heuristic scoring settings - values taken from existing nneonneo 2048 ai
 static const float SCORE_LOST_PENALTY = 200000.0f;
 static const float SCORE_MONOTONICITY_POWER = 4.0f;
 static const float SCORE_MONOTONICITY_WEIGHT = 47.0f;
@@ -168,7 +168,7 @@ static float score_board(board_t board) {
 }
 
 static float sum_row_scores(board_t board) {
-    return heur_score_table[(board >>  0) & ROW_MASK] +
+    return heur_score_table[(board) & ROW_MASK] +
            heur_score_table[(board >> 16) & ROW_MASK] +
            heur_score_table[(board >> 32) & ROW_MASK] +
            heur_score_table[(board >> 48) & ROW_MASK];
@@ -296,18 +296,16 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
 
 }
 
-
-static inline board_t transpose_board(board_t board) {
-    board_t transposed_board = 0;
-    board_t square;
-    // Need to place the square at (i, j) at (j, i)
-    for (int i = 0; i < ROW_SIZE; i++) {
-        for (int j = 0; j < ROW_SIZE; j++) {
-            square = (board >> (ROW_BITS*i + SQUARE_BITS*j)) & SQUARE_MASK;
-            transposed_board |= (square << (ROW_BITS*j + SQUARE_BITS*i));
-        }
-    }
-    return transposed_board;
+static inline board_t transpose_board(board_t x) {
+    // The most convoluted algorithm in the program, see assets/transpose.png for pen & paper explanation
+    board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
+    board_t a2 = x & 0x0000F0F00000F0F0ULL;
+    board_t a3 = x & 0x0F0F00000F0F0000ULL;
+    board_t a = a1 | (a2 << 12) | (a3 >> 12);
+    board_t b1 = a & 0xFF00FF0000FF00FFULL;
+    board_t b2 = a & 0x00FF00FF00000000ULL;
+    board_t b3 = a & 0x00000000FF00FF00ULL;
+    return b1 | (b2 >> 24) | (b3 << 24);
 }
 
 board_t insert_rand_square(board_t board, board_t new_square) {
@@ -335,12 +333,24 @@ board_t get_new_square() {
     return new_square;
 }
 
-int count_empty_squares(board_t board) {
-    int empty_squares = 0;
-    for (int i = 0; i < BOARD_BITS; i += SQUARE_BITS) {
-        if (!((board >> i) & SQUARE_MASK)) empty_squares++;
-    }
-    return empty_squares;
+int count_empty_squares(board_t x) {
+    // We need an arrangement where nonzero squares have a 0 in the last bit and zero squares a 1 in the last bit
+    // As long as we dont bitshift forward by 4, all zero squares stay zero in the last bit
+
+    // After this, every nonzero square will have 1 in its last 2 bits
+    x |= (x >> 2) & 0x3333333333333333ULL;
+    // Push one more shift in case nonzero square has a 1 in second last bit but still not the last bit (like 0010)
+    x |= (x >> 1);
+
+    // Take the opposite bitstring, & it with 1's and we get what we aimed for to begin with.
+    x = ~x & 0x1111111111111111ULL;
+
+    // Next sum them all
+    x += x >> 32;
+    x += x >> 16;
+    x += x >>  8;
+    x += x >>  4; // this can overflow to the next square if there were 16 empty positions
+    return x & SQUARE_MASK;
 }
 
 static inline int count_distinct_tiles(board_t board) {
@@ -406,7 +416,7 @@ static inline board_t play_move_down(board_t board) {
 static inline board_t play_move_left(board_t board) {
     board_t result = 0;
     // Concatenate the result of shifting each row left
-    result |= board_t(row_left_table[(board >>  0) & ROW_MASK]) <<  0;
+    result |= board_t(row_left_table[(board) & ROW_MASK]);
     result |= board_t(row_left_table[(board >> 16) & ROW_MASK]) << 16;
     result |= board_t(row_left_table[(board >> 32) & ROW_MASK]) << 32;
     result |= board_t(row_left_table[(board >> 48)]) << 48;
@@ -416,7 +426,7 @@ static inline board_t play_move_left(board_t board) {
 static inline board_t play_move_right(board_t board) {
     board_t result = 0;
     // Concatenate the result of shifting each row right
-    result |= board_t(row_right_table[(board >>  0) & ROW_MASK]) <<  0;
+    result |= board_t(row_right_table[(board) & ROW_MASK]);
     result |= board_t(row_right_table[(board >> 16) & ROW_MASK]) << 16;
     result |= board_t(row_right_table[(board >> 32) & ROW_MASK]) << 32;
     result |= board_t(row_right_table[(board >> 48)]) << 48;
