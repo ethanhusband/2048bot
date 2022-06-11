@@ -1,9 +1,23 @@
 
 # 2048 Bot
 
+To operate, simply open any terminal where python, navigate to the 1.0.0 directory and enter
+
+  python3 2048.py
+
 ## ALGORITHM
 
+The algorithm is an adaptation of the nneonneo 2048 bot - https://github.com/nneonneo/2048-ai
+
 ### EXPECTIMAX 
+
+The algorithm implements an expectimax tree to search for the best move.
+
+Expectimax trees alternate between move nodes and chance nodes. Move nodes simply have a value which is equivalent the highest utility child node, while chance nodes have a value equivalent to the expected value of all their child nodes, which are all possible arrangements following the chance node.
+
+As the tree is searched through, branched where the probability that such a branch occurs is less than a particular threshold, are pruned. The depth of the search is also proportional to the number of distinct tiles, since this is inherently when the game is more difficult and more careful calculation needs to be taken. For example, a board filled with twos and fours generally has an obvious response - merge all those tiles, however an increased number of distinct tiles makes what move to make far less obvious. This dynamic choice of search depth is arguably the strongest heuristic of the AI.
+
+Caching on chance nodes is also used since calculating the expecation within a move tree is computationally expensive. When a chance node is calculated, the board that node possesses is cached with its corresponding score, such that recalculation is dynamically avoided.
 
 ## DATA STRUCTURES
 
@@ -30,23 +44,39 @@ A table will be created for each move direction to save time
 that would otherwise be wasted reversing and transposing matrices to apply one operation table.
 
 The left shift of any given row can be implemented efficiently by using any stable sorting algorithm,
-where the key is simply whether the square is zero or nonzero, nonzero obviously taking priority. 
-std::stable_sort() achieves this.
+where the key is simply whether the square is zero or nonzero, nonzero obviously taking priority. std::stable_sort() achieves this.
 
-- Add column operation table description
+Row tables are looked up simply by indexing with the row itself, and receiving a result that is the corresponding row transformation.
+
+The column tables are admittedly convoluted, due to the fact a column cannot be bound to a 16bit representation
+in the same way a row can. How this is managed is to transform the board up or down, the board is first transposed.
+Transposing the board converts columns into rows such that each column can be treated as a 16bit number.
+This enables the space of possible columns to be small enough to have a lookup table. The 
 
 Ultimately an efficient time complexity for calculating these tables does not affect performance
 of the bot itself and has a small upper bound, so is largely unnecessary.
 
 ### SCORING TABLES
 
+Scoring tables are used in a similar manner to the board transformation tables. Since the score is computed as the sum result of every merge, it can be explicitly calculated that a given tile contributes to the score by an amount equal to (tile - 1) * (2^tile). Since the score can be evaluated by iterating over the squares, each row can just be used as an index, similar to transformation lookup, and what is returned is the score of that row. Summing over each row gets the total score.
+
+#### HEURISTIC SCORES
+
+Many heuristics such as monotonicity across files, the number of merges available etc improve the board evaluation to play more like a human. The values used for these heuristics are taken directly from the nneonneo algorithm.
+
 ## FRONT END
 
-### FUNCTIONS CALLED FROM C++
+The frontend GUI uses tkinter python library to mock the 2048 table
 
-### MULTITHREADING
+In order for moves performed to be shown in the frontend, the front end actually managed the state of the grid. Each move, the front end will call the select_move function from the cpp backend using the subprocess library.
+
+Each subprocess call submits the board code and returns the move to be played, and the Grid class in python manages the global state of the board from there.
 
 ### PYTHON AI TAKEOVER AT 32768 TILE
+
+It may be noticed that the cpp representation of the board using bitboards limits each square to a maximum of the 32768 tile.
+As a final push to get the 65536 tile if the opportunity presents itself, it is planned that the program should switch to a much more rudimentary python AI to make the final push in merging these two tiles when they both exist and are proximal, since the cpp AI is incapable of doing so.
+
 
 ## CODEBASE STANDARDS
 

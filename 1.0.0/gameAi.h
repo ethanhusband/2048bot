@@ -1,23 +1,42 @@
 #include <stdlib.h>
-#include <algorithm> // used for stable sort
+#include <algorithm> // used for stable sort, max function
+#include <unordered_map> // for caching
 #include <cmath>
 #include <time.h> // used for setting rand seed
+#include <sys/time.h> // TEMPORARY
 #include <unistd.h> // grants sleep function used for testing
 #include <iostream> // reading in the board from .py
 
 typedef uint64_t board_t;
 typedef uint16_t row_t;
 
-#define MAX_DEPTH 4
-// These are used since we can only use ctypes in python, which does not include bool
-#define TRUE 1
-#define FALSE 0
+// Definitions for the caching table used during the expectimax search. Whether this optimises algorithm is tentative.
+struct cache_entry_t{
+    uint8_t depth;
+    float heuristic;
+};
+#include <unordered_map>
+typedef std::unordered_map<board_t, cache_entry_t> cache_table_t;
+cache_table_t cache_table;
+
+// The state of the current expectimax board evaluation
+struct eval_state {
+    cache_table_t cache_table; // transposition table, to cache previously-seen moves
+    int maxdepth;
+    int curdepth;
+    int cachehits;
+    unsigned long moves_evaled;
+    int depth_limit;
+
+    eval_state() : maxdepth(0), curdepth(0), cachehits(0), moves_evaled(0), depth_limit(0) {
+    }
+};
 
 // Intuition behind the various constant values used
 #define ROW_SIZE 4
 #define BOARD_SIZE ROW_SIZE*ROW_SIZE
 #define SQUARE_BITS 4
-#define ROW_BITS ROW_SIZE*SQUARE_BITS
+#define ROW_BITS 16
 #define BOARD_BITS ROW_BITS*ROW_SIZE
 #define MOVE_DIRECTIONS 4
 
@@ -58,5 +77,10 @@ static inline board_t play_move_down(board_t board);
 void print_bitboard(board_t board);
 
 void instantiate_tables();
-float get_move_tree_score(board_t board, int depth, int is_max, float cprob);
+float score_root_move(board_t board, int move);
+static float score_chance_node(eval_state &state, board_t board, float cprob);
+static float score_max_node(eval_state &state, board_t board, float cprob);
 int select_move(board_t board);
+static inline int count_distinct_tiles(board_t board);
+
+float score_baselevel_move(board_t board, int move);

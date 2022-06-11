@@ -1,41 +1,53 @@
 #include "gameAi.h"
 
+// Stop caching after depth reaches this limit (hits too improbable for this to be more efficient)
+#define CACHE_DEPTH_LIM 15
+// Dont calculate moves where the cumulative probability of the random squares occurring is below this threshold
+#define CPROB_THRESHOLD 0.0001f
+
 static row_t row_left_table [65536];
 static row_t row_right_table[65536];
 // Since columns are vertical, we need a board_t to store them. There will still only be 2^16 of them.
 static board_t col_up_table[65536];
 static board_t col_down_table[65536];
+// Regular score table is kept for the sake of testing and comparison, heur table is primarily used however.
 static float score_table[65536];
+static float heur_score_table[65536];
 
-#define USING_FRONTEND false
+#define USING_FRONTEND true
 
 int main(int argc, char *argv[]) {
     instantiate_tables();
-#if USING_FRONTEND
-    /*printf("STARTING WITH BOARD: \n");
-    print_bitboard(299068625676867);
-    int move = select_move(299068625676867);
-    printf("RESULT IS MOVE %d\n", move);
-    print_bitboard(play_move(move, 299068625676867));*/
+#if !USING_FRONTEND
     play_game();
 #endif
-#if !USING_FRONTEND
+#if USING_FRONTEND
     
     board_t board;
     std::cin >> board;
     printf("RECEIVED BITBOARD: \n");
     print_bitboard(board);
     int result = select_move(board);
-    printf("RESULT: %d", result);
+    printf("RESULT: %d\n", result);
     return result;
 #endif
 }
+
+// Heuristic scoring settings - values taken from existing 2048 ai
+static const float SCORE_LOST_PENALTY = 200000.0f;
+static const float SCORE_MONOTONICITY_POWER = 4.0f;
+static const float SCORE_MONOTONICITY_WEIGHT = 47.0f;
+static const float SCORE_SUM_POWER = 3.5f;
+static const float SCORE_SUM_WEIGHT = 11.0f;
+static const float SCORE_MERGES_WEIGHT = 700.0f;
+static const float SCORE_EMPTY_WEIGHT = 270.0f;
 
 void instantiate_tables() {
     for (unsigned row = 0; row < TABLE_SIZE; row++) {
         // Store each square
         unsigned square[ROW_SIZE] = {
-            // Each of these squares is &'d with 0xf = 1111 such that only the last 4 bits are possibly positive
+            // Each of these squares is &'d with 0xf = 1111 such that only the last 4 bits are possibly positive.
+            // This technique is used often throughout the software to extract rows or squares.
                 (row) & 0xf,
                 (row >>  SQUARE_BITS) & 0xf,
                 (row >>  2*SQUARE_BITS) & 0xf,
@@ -52,6 +64,51 @@ void instantiate_tables() {
             }
         }
         score_table[row] = score;
+
+        // Add row to heuristic score table
+        float sum = 0;
+        int empty = 0;
+        int merges = 0;
+
+        int prev = 0;
+        int counter = 0;
+        for (int i = 0; i < ROW_SIZE; ++i) {
+            int rank = square[i];
+            sum += pow(rank, SCORE_SUM_POWER);
+            // Count the amount of empty squares
+            if (rank == 0) {
+                empty++;
+            } else {
+                // Test the amount of merges possible
+                if (prev == rank) {
+                    counter++;
+                } else if (counter > 0) {
+                    merges += 1 + counter;
+                    counter = 0;
+                }
+                prev = rank;
+            }
+        }
+        if (counter > 0) {
+            merges += 1 + counter;
+        }
+        
+        // Weight the monotonicity in heur score
+        float monotonicity_left = 0;
+        float monotonicity_right = 0;
+        for (int i = 1; i < ROW_SIZE; ++i) {
+            if (square[i-1] > square[i]) {
+                monotonicity_left += pow(square[i-1], SCORE_MONOTONICITY_POWER) - pow(square[i], SCORE_MONOTONICITY_POWER);
+            } else {
+                monotonicity_right += pow(square[i], SCORE_MONOTONICITY_POWER) - pow(square[i-1], SCORE_MONOTONICITY_POWER);
+            }
+        }
+
+        heur_score_table[row] = SCORE_LOST_PENALTY +
+            SCORE_EMPTY_WEIGHT * empty +
+            SCORE_MERGES_WEIGHT * merges -
+            SCORE_MONOTONICITY_WEIGHT * std::min(monotonicity_left, monotonicity_right) -
+            SCORE_SUM_WEIGHT * sum;
 
         // Merge any squares before compressing
         for (int i = 0; i < ROW_SIZE-1; i++) {
@@ -105,20 +162,18 @@ bool right_shift_comp(const row_t a, const row_t b) {
 }
 
 static float score_board(board_t board) {
-    return score_table[(board >>  0) & ROW_MASK] +
-           score_table[(board >> 16) & ROW_MASK] +
-           score_table[(board >> 32) & ROW_MASK] +
-           score_table[(board >> 48) & ROW_MASK];
+    return heur_score_table[(board >>  0) & ROW_MASK] +
+           heur_score_table[(board >> 16) & ROW_MASK] +
+           heur_score_table[(board >> 32) & ROW_MASK] +
+           heur_score_table[(board >> 48) & ROW_MASK];
 }
 
 void play_game() {
     board_t board = init_board();
     // We now have our starting board
-
     while(true) {
         printf("BOARD IS NOW: %llu\n", board);
         print_bitboard(board);
-        board_t newboard;
         // The score increases when 2 tiles merge, by an amount equal to the value of the merged tile. 
         // Given this, there is a way to calculate the score explicitly using just the tiles.
         // However, getting a 4 to begin with means it wasnt a merged tile, and needs to be recorded to subtract from score.
@@ -128,12 +183,12 @@ void play_game() {
         if(best_move < 0)
             // get_move_tree_score returns negative if no available moves
             break;
-
-        newboard = play_move(best_move, board);
+        printf("PLAYING MOVE %d\n", best_move);
+        board = play_move(best_move, board);
 
         board_t new_square = get_new_square();
         if (new_square == 2) score_penalty += 4;
-        board = insert_rand_square(newboard, new_square);
+        board = insert_rand_square(board, new_square);
     }
     printf("Game over\n");
 }
@@ -147,11 +202,13 @@ board_t init_board() {
 }
 
 int select_move(board_t board) {
-    float max_util = -1;
+    float max_util = 0;
     int best_move = -1;
+
     for (int i = 0; i < MOVE_DIRECTIONS; i++) {
         if (play_move(i, board) == board) continue;
-        float move_score = get_move_tree_score(play_move(i, board), 0, false, 1);
+
+        float move_score = score_root_move(board, i);
         if (move_score > max_util) {
             best_move = i;
             max_util = move_score;
@@ -160,43 +217,75 @@ int select_move(board_t board) {
     return best_move;
 }
 
+float score_root_move(board_t board, int move) {
+    // state, play_move(board, i), 1.0f
+    eval_state state;
+    state.depth_limit = std::max(3, count_distinct_tiles(board) - 2);
+    board_t move_board = play_move(move, board);
+    float move_score = score_chance_node(state, move_board, 1.0f) + 1e-6;
+    printf("Move %d: result %f: eval'd %ld moves (%d cache hits, %d cache size) (maxdepth=%d)\n", move, move_score, \
+                state.moves_evaled, state.cachehits, (int)state.cache_table.size(), state.maxdepth);
+    return move_score;
+}
 
-// Dont calculate moves where the cumulative probability of the random squares occurring is below this threshold
-#define CPROB 0.0001f
-// This is where expectimax algorithm is implemented to create a move tree
-float get_move_tree_score(board_t board, int depth, int is_max, float cprob) {
-    if (depth == MAX_DEPTH || cprob < CPROB) return score_board(board);
+static float score_max_node(eval_state &state, board_t board, float cprob) {
+    float highest_utility = 0.0f;
+    state.curdepth++;
+    for (int move = 0; move < MOVE_DIRECTIONS; ++move) {
+        state.moves_evaled++;
+        board_t newboard = play_move(move, board);
 
-    // Max node, pick the highest score move
-    if (is_max) {
-        int highest_utility = -1;
-        board_t best_move;
-        for (int i = 0; i < ROW_SIZE; i++) {
-            board_t tmp = play_move(i, board);
-            // Ensure board is not the same, set highest utility to the board with max score
-            if (tmp != board && get_move_tree_score(tmp, depth+1, TRUE, cprob) > highest_utility) {
-                highest_utility = score_board(board);
-                best_move = tmp;
+        if (board != newboard) {
+            highest_utility = std::max(highest_utility, score_chance_node(state, newboard, cprob));
+        }
+    }
+    state.curdepth--;
+    return highest_utility;
+}
+
+static float score_chance_node(eval_state &state, board_t board, float cprob) {
+    if (state.curdepth >= state.depth_limit || cprob < CPROB_THRESHOLD) {
+            state.maxdepth = std::max(state.curdepth, state.maxdepth);
+            return score_board(board);
+        }
+
+    // Take the expected score from the cache if possible
+    if (state.curdepth < CACHE_DEPTH_LIM) {
+        const cache_table_t::iterator &i = cache_table.find(board);
+        if (i != cache_table.end()) {
+            cache_entry_t entry = i->second;
+            if(entry.depth <= state.curdepth) {
+                state.cachehits++;
+                return entry.heuristic;
             }
         }
-        return highest_utility;
     }
-    // Chance node. Returns the average of possible panel spawns
-    else {
-        float expectation_sum=0;
-        float empty_squares=0;
-        for (int i = 0; i < BOARD_BITS; i+=SQUARE_BITS) {
-            // Check for empty square, add random val to it
-            if (!((board << i) & SQUARE_MASK)) {
-                empty_squares++;
-                int two_board = board | (1 << i);
-                int four_board = (board) | (2 << i);
-                expectation_sum += 0.9*get_move_tree_score(two_board, depth+1, FALSE, 0.9*cprob) + \
-                                    0.1*get_move_tree_score(four_board, depth+1, FALSE, 0.1*cprob);
-            }
+
+    int empties = count_empty_squares(board);
+    cprob /= empties;
+
+    float expectation = 0.0f;
+    board_t tmp = board;
+    board_t two_board = 1;
+    while (two_board) {
+        // If we hit an empty square, test it
+        if ((tmp & 0xf) == 0) {
+            expectation += score_max_node(state, board |  two_board, cprob * 0.9f) * 0.9f;
+            expectation += score_max_node(state, board | (two_board << 1), cprob * 0.1f) * 0.1f;
         }
-        return expectation_sum/empty_squares;
+        tmp >>= SQUARE_BITS;
+        two_board <<= SQUARE_BITS;
     }
+    expectation = expectation / empties;
+
+    // Add this result to the cache
+    if (state.curdepth < CACHE_DEPTH_LIM) {
+        cache_entry_t entry = {static_cast<uint8_t>(state.curdepth), expectation};
+        cache_table[board] = entry;
+    }
+
+    return expectation;
+
 }
 
 
@@ -216,6 +305,7 @@ static inline board_t transpose_board(board_t board) {
 board_t insert_rand_square(board_t board, board_t new_square) {
     int empties = count_empty_squares(board);
     int index = 1;
+    // Index is used to place the new sqaure at the <index>th empty square we find
     if (empties > 1) {
         index = rand()%empties;
     }
@@ -224,6 +314,7 @@ board_t insert_rand_square(board_t board, board_t new_square) {
         if (!((board >> i) & SQUARE_MASK)) empties_found++;
         if (empties_found == index) {
             board |= (new_square << i);
+            break;
         }
     }
     return board;
@@ -242,6 +333,26 @@ int count_empty_squares(board_t board) {
         if (!((board >> i) & SQUARE_MASK)) empty_squares++;
     }
     return empty_squares;
+}
+
+static inline int count_distinct_tiles(board_t board) {
+    uint16_t bitset = 0;
+    while (board) {
+        // This will push a 1 to the same location for the same square value
+        bitset |= 1<<(board & SQUARE_MASK);
+        board >>= SQUARE_BITS;
+    }
+
+    // Don't count empty tiles.
+    bitset >>= 1;
+
+    int count = 0;
+    while (bitset) {
+        // Check the amount of 1's in the bitset, corresponding to amount of distinct tiles
+        bitset &= bitset - 1;
+        count++;
+    }
+    return count;
 }
 
 // Pick one of the moves. Moves use index codes such that this function can be looped through with fewer operations.

@@ -137,7 +137,7 @@ class Game:
     def ai_handler(self):
         while True:
             self.grid.clear_flags()
-            cmd = subprocess.Popen(['./runme'], stdin=subprocess.PIPE)
+            cmd = subprocess.Popen(['./2048'], stdin=subprocess.PIPE)
             cmd.stdin.write('{}\n'.format(to_c_board(self.grid.cells)).encode('utf-8'))
             cmd.stdin.flush()
             cmd.stdin.close()
