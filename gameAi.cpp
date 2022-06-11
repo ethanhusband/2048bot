@@ -162,6 +162,12 @@ bool right_shift_comp(const row_t a, const row_t b) {
 }
 
 static float score_board(board_t board) {
+    // Since the heuristics involve monotonicity and direction based features, 
+    // We need to score the board and the transpose, such that these features are accounted for in each direction.
+    return sum_row_scores(board) + sum_row_scores(transpose_board(board));
+}
+
+static float sum_row_scores(board_t board) {
     return heur_score_table[(board >>  0) & ROW_MASK] +
            heur_score_table[(board >> 16) & ROW_MASK] +
            heur_score_table[(board >> 32) & ROW_MASK] +

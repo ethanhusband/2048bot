@@ -61,6 +61,7 @@ struct eval_state {
 bool left_shift_comp(const row_t a, const row_t b);
 bool right_shift_comp(const row_t a, const row_t b);
 static float score_board(board_t board);
+static float sum_row_scores(board_t board);
 
 void play_game();
 board_t init_board();
