@@ -1,15 +1,15 @@
 
 # 2048 Bot
 
+AI for the game 2048. Employing numerous state of the art techniques which culminate into the one of the best known performing 2048 AI, winning 100% of it's games and even reaching the 32,768 tile on many occasions 
+
 To operate, simply open any terminal where python, enter
 
     python3 2048.py
 
-## ALGORITHM
+## ALGORITHM & BACKGROUND
 
 The algorithm is an adaptation of the [nneonneo 2048 bot](https://github.com/nneonneo/2048-ai)
-
-It employs numerous state of the art techniques which culminate into the one of the best known performing 2048 AI
 
 ### EXPECTIMAX 
 
