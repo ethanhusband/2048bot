@@ -7,7 +7,9 @@ To operate, simply open any terminal where python, enter
 
 ## ALGORITHM
 
-The algorithm is an adaptation of the nneonneo 2048 bot - https://github.com/nneonneo/2048-ai
+The algorithm is an adaptation of the [nneonneo 2048 bot](https://github.com/nneonneo/2048-ai)
+
+It employs numerous state of the art techniques which culminate into the one of the best known performing 2048 bots
 
 ### EXPECTIMAX 
 
