@@ -5,14 +5,14 @@
 // Dont calculate moves where the cumulative probability of the random squares occurring is below this threshold
 #define CPROB_THRESHOLD 0.0001f
 
-static row_t row_left_table [65536];
-static row_t row_right_table[65536];
+static row_t row_left_table [TABLE_SIZE];
+static row_t row_right_table[TABLE_SIZE];
 // Since columns are vertical, we need a board_t to store them. There will still only be 2^16 of them.
-static board_t col_up_table[65536];
-static board_t col_down_table[65536];
+static board_t col_up_table[TABLE_SIZE];
+static board_t col_down_table[TABLE_SIZE];
 // Regular score table is kept for the sake of testing and comparison, heur table is primarily used however.
-static float score_table[65536];
-static float heur_score_table[65536];
+static float score_table[TABLE_SIZE];
+static float heur_score_table[TABLE_SIZE];
 
 #define USING_FRONTEND true
 
@@ -55,10 +55,11 @@ void instantiate_tables() {
 
         // Add this row to the score table
         float score = 0.0f;
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < ROW_SIZE; ++i) {
             int tile = square[i];
             if (tile >= 2) {
                 // The score is the total sum of the tile and all intermediate merged tiles
+                // Noting we store the power of 2 (n) for each square, the formula is 2^(n+1) - 1
                 score += (tile - 1) * (1 << tile);
             }
         }
@@ -299,7 +300,7 @@ static float score_chance_node(eval_state &state, board_t board, float cprob) {
 }
 
 static inline board_t transpose_board(board_t x) {
-    // The most convoluted algorithm in the program, see assets/transpose.png for a visual explanation
+    // The most involved algorithm in the program, see extras/transpose.png for a visual example
     board_t a1 = x & 0xF0F00F0FF0F00F0FULL;
     board_t a2 = x & 0x0000F0F00000F0F0ULL;
     board_t a3 = x & 0x0F0F00000F0F0000ULL;

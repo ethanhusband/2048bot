@@ -1,4 +1,3 @@
-
 import random
 
 class Grid:

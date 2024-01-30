@@ -1,18 +1,14 @@
-# GUI and game running logic written by andersqiu
+# GUI and game running logic adapted/written by andersqiu
 
 from __future__ import print_function
 from cProfile import run
-import math
-
 from board import Grid
-try:
-    import tkinter as tk # For Python 3
-    import tkinter.messagebox as messagebox
-except:
-    import Tkinter as tk # For Python 2
-    import tkMessageBox as messagebox
+
+import tkinter as tk # For Python 3
+import tkinter.messagebox as messagebox
 import sys
 import subprocess
+import math
 
 def to_c_board(pyboard):
     board = 0

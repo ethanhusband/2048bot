@@ -8,9 +8,12 @@ AI for the game 2048. Employing numerous state of the art techniques which culmi
 
 ## INSTALLATION
 
-To operate, simply open any terminal where python, enter
+To operate, first clone the repo, then ensure you have homebrew and python installed and enter
 
-    python3 2048.py
+```
+brew install python-tk
+python3 2048.py
+```
 
 ## ALGORITHM & BACKGROUND
 
